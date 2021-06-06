@@ -1,0 +1,16 @@
+[Unit]
+Description=Webprobe
+
+[Service]
+ExecStartPre=/usr/bin/test -x /opt/apps/webprobe/webprobe
+
+Type=simple
+PIDFile=/var/run/webprobe.pid
+FileDescriptorStoreMax=10000
+UMask=022
+ExecStart=/opt/apps/webprobe/webprobe
+ExecStop=/bin/kill -15 $MAINPID
+ExecStopPost=/bin/rm -f /var/run/webprobe.pid
+
+[Install]
+WantedBy=multi-user.target

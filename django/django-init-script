@@ -1,0 +1,151 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          FastCGI servers for Django
+# Required-Start:    networking
+# Required-Stop:     networking
+# Default-Start:     2 3 4 5
+# Default-Stop:      S 0 1 6
+# Short-Description: Start FastCGI servers with Django.
+# Description:       Django, in order to operate with FastCGI, must be started
+#                    in a very specific way with manage.py. This must be done
+#                    for each Django web server that has to run.
+### END INIT INFO
+
+
+set -e
+
+#### CONFIGURATION (override in /etc/default/django)
+
+# django project names/directories
+DJANGO_SITE="adminui"
+
+# path to the directory with your django projects
+SITES_PATH=/home/admin
+
+# path to the directory for socket and pid files
+RUNFILES_PATH=/var/run/django
+
+# please make sure this is NOT root
+# local user prefered, www-data accepted
+RUN_AS=admin
+
+# maximum requests before fast-cgi process respawns
+# (a.k.a. get killed and let live)
+MAXREQUESTS=1000
+
+PORT=8000
+HOST=127.0.0.1
+
+
+#### END CONFIGURATION
+
+# Include defaults if available
+if [ -f /etc/default/django ] ; then
+	. /etc/default/django
+fi
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+DESC="Django uWSGI servers"
+NAME=$0
+SCRIPTNAME=/etc/init.d/$NAME
+mkdir -p $RUNFILES_PATH
+chown -R $RUN_AS:$RUN_AS $RUNFILES_PATH
+
+#
+#	Function that starts the daemon/service.
+#
+d_start()
+{
+	# Starting all Django FastCGI processes
+	# PORT=$PORT_START
+	if [ "$IS_RESTART" != 1 ]; then
+		echo -n "$DJANGO_SITE"
+	fi
+	
+	if [ ! -d /var/log/uwsgi ];then
+		mkdir -p /var/log/uwsgi/ >/dev/null 2>&1
+	fi
+
+	if [ -f $RUNFILES_PATH/$DJANGO_SITE.pid ]; then
+		echo -n " already running"
+	else
+				
+		/usr/bin/uwsgi --plugins python,http \
+					   --uid $RUN_AS \
+					   --chdir=$SITES_PATH/$DJANGO_SITE \
+					   --module=admin.wsgi:application \
+					   --env DJANGO_SETTINGS_MODULE=settings \
+					   --master --pidfile=$RUNFILES_PATH/$DJANGO_SITE.pid  \
+					   --socket=$HOST:$PORT \
+					   --daemonize=/var/log/uwsgi/admin.log \
+					   --static-map /static=/home/admin/adminui/media
+	fi
+}
+
+
+#
+#	Function that gets the daemon/service.
+#
+d_status() {
+	# Status of all Django FastCGI processes
+	# PORT=$PORT_START
+	echo -n "$DJANGO_SITE"
+	if [ -f $RUNFILES_PATH/$DJANGO_SITE.pid ]; then
+		if ! kill -0 $(cat $RUNFILES_PATH/$DJANGO_SITE.pid) >/dev/null 2>&1; then
+			echo -n " not running\n"
+			rm -f $RUNFILES_PATH/$DJANGO_SITE.pid
+			exit 1 
+		else
+			echo -n " is running\n"
+		fi
+	else
+		echo -n " not running\n"
+		exit 1
+	fi
+}
+
+#
+#	Function that stops the daemon/service.
+#
+d_stop() {
+	# Killing all Django FastCGI processes running
+	echo -n "$DJANGO_SITE"
+	/usr/bin/uwsgi --stop  $RUNFILES_PATH/$DJANGO_SITE.pid \
+		|| echo -n " not running"
+	if [ -f $RUNFILES_PATH/$DJANGO_SITE.pid ]; then
+		rm -f $RUNFILES_PATH/$DJANGO_SITE.pid
+	fi
+}
+
+IS_RESTART=0
+ACTION="$1"
+case "$ACTION" in
+	start)
+		echo -n "Starting $DESC: "
+		d_start
+		echo "."
+		;;
+	stop)
+		echo -n "Stopping $DESC: "
+		d_stop
+		echo "."
+		;;
+	status)
+		echo -n "Status $DESC: "
+		d_status
+		echo "."
+		;;
+	restart|force-reload)
+		IS_RESTART=1
+		echo -n "Restarting $DESC: "
+		d_stop
+		sleep 2
+		d_start
+		echo "."
+		;;
+	*)
+	echo "Usage: $NAME {start|stop|restart|force-reload}" >&2
+	exit 3
+	;;
+esac
+exit 0

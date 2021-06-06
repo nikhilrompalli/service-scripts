@@ -1,0 +1,30 @@
+[Unit]
+Description=Django Service
+After=syslog.target network.target
+
+[Service]
+Type=simple
+PIDFile=/var/run/django/adminui.pid
+Environment="DJANGO_SITE=adminui"
+Environment="SITES_PATH=/home/admin"
+Environment="RUNFILES_PATH=/var/run/django"
+Environment="RUN_AS=admin"
+Environment="MAXREQUESTS=1000"
+Environment="PORT=8000"
+Environment="HOST=127.0.0.1"
+Environment="UWSGI_PATH=/var/log/uwsgi"
+ExecStartPre=/bin/sh -c "/bin/mkdir -p ${RUNFILES_PATH} ;if [ ! -d ${UWSGI_PATH} ];then mkdir -p ${UWSGI_PATH} ; fi ; /bin/chown -R ${RUN_AS}:${RUN_AS} ${RUNFILES_PATH}"
+ExecStart=/usr/bin/uwsgi --plugins python,http \
+	   --uid ${RUN_AS} \
+	   --chdir=${SITES_PATH}/${DJANGO_SITE} \
+	   --module=admin.wsgi:application \
+	   --env DJANGO_SETTINGS_MODULE=settings \
+	   --master --pidfile=${RUNFILES_PATH}/${DJANGO_SITE}.pid  \
+	   --socket=${HOST}:${PORT} \
+	   --daemonize=/var/log/uwsgi/admin.log \
+	   --static-map /static=/home/admin/adminui/media
+ExecStartPost=/bin/sleep 10
+ExecStop=/usr/bin/uwsgi --stop  ${RUNFILES_PATH}/${DJANGO_SITE}.pid
+
+[Install]
+WantedBy=multi-user.target

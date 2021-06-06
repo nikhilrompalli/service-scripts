@@ -1,0 +1,14 @@
+[Unit]
+Description=Simple Network Management Protocol (SNMP) Daemon.
+After=syslog.target network.target
+
+[Service]
+Type=simple
+PIDFile=/var/run/snmpd.pid
+Environment="PATH=/sbin:/usr/sbin:/bin:/usr/bin"
+Environment="MIBSDIR=/usr/share/mibs/site:/usr/share/snmp/mibs:/usr/share/mibs/iana:/usr/share/mibs/ietf:/usr/share/mibs/netsnmp"
+ExecStart=/usr/sbin/snmpd -LS4d -Lf /dev/null -u Debian-snmp -g Debian-snmp -I -smux -f -p /var/run/snmpd.pid
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target

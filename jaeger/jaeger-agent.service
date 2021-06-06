@@ -1,0 +1,14 @@
+[Unit]
+Description=Jaeger Agent
+
+[Service]
+
+Type=simple
+
+ExecStart=/opt/jaeger/jaeger-agent --reporter.grpc.host-port 172.26.20.121:14250
+StandardOutput=syslog
+SyslogIdentifier=jaeger-agent
+ExecStop=/bin/kill -15 $MAINPID
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,14 @@
+[Unit]
+Description=Jaeger Query
+
+[Service]
+
+Type=simple
+
+ExecStart=/opt/jaeger/jaeger-query --span-storage.type elasticsearch
+StandardOutput=syslog
+SyslogIdentifier=jaeger-query
+ExecStop=/bin/kill -15 $MAINPID
+
+[Install]
+WantedBy=multi-user.target

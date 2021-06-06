@@ -1,0 +1,14 @@
+[Unit]
+Description=Jaeger Collector
+
+[Service]
+
+Type=simple
+
+ExecStart=/opt/jaeger/jaeger-collector --span-storage.type elasticsearch
+StandardOutput=syslog
+SyslogIdentifier=jaeger-collector
+ExecStop=/bin/kill -15 $MAINPID
+
+[Install]
+WantedBy=multi-user.target
